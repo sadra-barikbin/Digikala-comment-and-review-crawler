@@ -115,7 +115,12 @@ class ReviewsAndCommentsSpider(scrapy.Spider):
         current_page: int = data['pager']['current_page']
         total_pages: int = data['pager']['total_pages']
         brand_code: str = data["brand"]["code"]
-        if current_page < total_pages:
+
+        # Second clause is due to api limitations, but since we have broken
+        # products into main_categories, categories, subcategories and brands,
+        # this is not much likely to reach this limitation here, except for
+        # some categories when brand is `miscellaneous`.
+        if current_page < total_pages and current_page < 100:
             yield scrapy.Request(
                 f"{DIGIKALA_API}/categories/{subcategory_code}/brands/{brand_code}/search/?page={current_page + 1}",
                 callback=self.parse_brand_response
@@ -149,21 +154,25 @@ class ReviewsAndCommentsSpider(scrapy.Spider):
         if 'comments' in data:
             for comment_dict in data['comments']:
                 yield Comment(
-                    text=comment_dict['body'],
+                    text="" if comment_dict['body'] is None else comment_dict['body'],
                     title="" if comment_dict['title'] is None else comment_dict['title'],
                     date=comment_dict['created_at']
                 )
         
         for comment_dict in data['media_comments']:
             yield Comment(
-                text=comment_dict['body'],
+                text="" if comment_dict['body'] is None else comment_dict['body'],
                 title="" if comment_dict['title'] is None else comment_dict['title'],
                 date=comment_dict['created_at']
             )
 
         current_page: int = data['pager']['current_page']
         total_pages: int = data['pager']['total_pages']
-        if current_page < total_pages:
+
+        # Second clause is due to api limitations, but since we have broken
+        # products into main_categories, categories, subcategories and brands,
+        # this is not likely to face with this limitation here.
+        if current_page < total_pages and current_page < 100:
             yield scrapy.Request(
                 f"{DIGIKALA_API}/product/{product_id}/comments/?page={current_page + 1}",
                 callback=self.parse_product_comments_response,
