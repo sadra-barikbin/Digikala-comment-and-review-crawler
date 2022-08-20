@@ -126,8 +126,14 @@ class ReviewsAndCommentsSpider(scrapy.Spider):
                 callback=self.parse_brand_response
             )
 
-    def parse_product_response(self, response: TextResponse) -> Iterable[Union[scrapy.Request, scrapy.Item]]:
+    def parse_product_response(
+        self,
+        response: TextResponse
+    ) -> Optional[Iterable[Union[scrapy.Request, scrapy.Item]]]:
         product: Dict[str, Any] = response.json()['data']['product']
+
+        if product['is_inactive']:
+            return
 
         if "description" in product["review"]:
             yield Review(text=product["review"]["description"])
