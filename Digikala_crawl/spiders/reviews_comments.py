@@ -1,5 +1,5 @@
-from matplotlib.pyplot import title
 import scrapy
+import unidecode
 from scrapy.http.response.text import TextResponse
 from scrapy.exceptions import CloseSpider
 from typing import Dict, Any, Iterable, Optional, Union
@@ -80,10 +80,17 @@ class ReviewsAndCommentsSpider(scrapy.Spider):
             for brand_dict in data["filters"]["brands"]["options"]:
                 brand_code: str = brand_dict['code']
 
-                yield scrapy.Request(
-                    f"{DIGIKALA_API}/categories/{subcategory_code}/brands/{brand_code}/search/",
-                    callback=self.parse_brand_response
-                )
+                # In a few cases, some brand names have characters with accent e.g. 'èloge'.
+                # Digikala itself, calls the API with the unaccented names. So we do.
+                try:
+                    brand_code = unidecode.unidecode(brand_code, errors='strict')
+
+                    yield scrapy.Request(
+                        f"{DIGIKALA_API}/categories/{subcategory_code}/brands/{brand_code}/search/",
+                        callback=self.parse_brand_response
+                    )
+                except unidecode.UnidecodeError:
+                    self.logger.info(f"Unable to asciifi brand code {brand_code}. Ignored it.")
         else:
             for product_dict in data['products']:
                 product_id: int = product_dict['id']
